@@ -126,9 +126,19 @@ class FineTuner:
         """
         try:
             from unsloth import FastLanguageModel, is_bfloat16_supported
-            from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
+            from trl import SFTTrainer
             from transformers import TrainingArguments
             from peft import LoraConfig
+            
+            # Handle different TRL versions for DataCollatorForCompletionOnlyLM
+            try:
+                from trl import DataCollatorForCompletionOnlyLM
+            except ImportError:
+                try:
+                    from trl.trainer import DataCollatorForCompletionOnlyLM
+                except ImportError:
+                    # Fallback: define a simple version
+                    DataCollatorForCompletionOnlyLM = None
         except ImportError as e:
             raise ImportError(
                 f"Required dependencies not installed: {e}\n"
@@ -291,22 +301,28 @@ class FineTuner:
             training_args.eval_steps = self.config["save_steps"]
             training_args.load_best_model_at_end = True
         
-        # Initialize trainer
-        self.trainer = SFTTrainer(
-            model=self.model,
-            tokenizer=self.tokenizer,
-            train_dataset=formatted_dataset,
-            eval_dataset=eval_dataset,
-            dataset_text_field="text",
-            max_seq_length=max_seq_length,
-            data_collator=DataCollatorForCompletionOnlyLM(
+        # Build trainer kwargs
+        trainer_kwargs = {
+            "model": self.model,
+            "tokenizer": self.tokenizer,
+            "train_dataset": formatted_dataset,
+            "eval_dataset": eval_dataset,
+            "dataset_text_field": "text",
+            "max_seq_length": max_seq_length,
+            "dataset_num_proc": 2,
+            "packing": False,
+            "args": training_args,
+        }
+        
+        # Add data collator only if available
+        if DataCollatorForCompletionOnlyLM is not None:
+            trainer_kwargs["data_collator"] = DataCollatorForCompletionOnlyLM(
                 tokenizer=self.tokenizer,
                 mlm=False,
-            ),
-            dataset_num_proc=2,
-            packing=False,
-            args=training_args,
-        )
+            )
+        
+        # Initialize trainer
+        self.trainer = SFTTrainer(**trainer_kwargs)
         
         # Train
         print("\n" + "="*50)
