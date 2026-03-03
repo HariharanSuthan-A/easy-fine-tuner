@@ -182,6 +182,125 @@ tuner.train(
 
 ---
 
+## ⚙️ All Training Parameters
+
+Complete list of all parameters supported by `FineTuner.train()`:
+
+### Required Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `dataset` | str, List, Dataset, DataFrame | Training data (file path, list of dicts, DataFrame, or Dataset) |
+
+### Model Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `output_dir` | str | `"outputs"` | Directory to save model checkpoints |
+| `num_epochs` | int or `"auto"` | `"auto"` | Number of training epochs |
+| `max_seq_length` | int or `"auto"` | `"auto"` | Maximum sequence length for model |
+
+### Training Hyperparameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `learning_rate` | float or `"auto"` | `"auto"` | Learning rate (auto: 5e-5 to 5e-4 based on dataset size) |
+| `batch_size` | int or `"auto"` | `"auto"` | Batch size per device (auto: based on VRAM) |
+| `gradient_accumulation_steps` | int or `"auto"` | `"auto"` | Steps to accumulate gradients before updating weights |
+| `warmup_steps` | int or `"auto"` | `"auto"` | Number of warmup steps for learning rate scheduler |
+| `weight_decay` | float | `0.01` | Weight decay for regularization |
+| `lr_scheduler_type` | str | `"cosine"` | Learning rate scheduler type |
+
+### LoRA (Low-Rank Adaptation) Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `lora_r` | int or `"auto"` | `"auto"` | LoRA rank (auto: 32 for small models, 64 for larger) |
+| `lora_alpha` | int | auto-calculated | LoRA alpha (typically 2x lora_r) |
+| `lora_dropout` | float | `0` | Dropout probability for LoRA layers |
+
+### Checkpoint & Logging
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `save_steps` | int or `None` | `None` (auto) | Steps between checkpoints |
+| `logging_steps` | int or `None` | `None` (auto) | Steps between console logs |
+| `save_total_limit` | int | `3` | Maximum number of checkpoints to keep |
+
+### Data & Validation
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `validation_split` | float | `0.1` | Fraction of data for validation (0.0-1.0) |
+| `template` | str | `"auto"` | Prompt template ("auto", "alpaca", "chatml", "plain") |
+
+### Advanced Options
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seed` | int | `3407` | Random seed for reproducibility |
+| `resume_from_checkpoint` | str or `None` | `None` | Path to checkpoint to resume training from |
+| `load_in_4bit` | bool | `True` | Use 4-bit quantization to save memory |
+| `device_map` | str | `"auto"` | Device mapping strategy for model placement |
+| `**kwargs` | any | - | Additional arguments passed to TrainingArguments |
+
+### Auto-Configuration Rules
+
+When parameters are set to `"auto"`, they are determined as follows:
+
+| Parameter | Small Model (<2B) | Medium (2-8B) | Large (>8B) |
+|-----------|----------------|---------------|-------------|
+| `lora_r` | 32 | 64 | 64 |
+| `batch_size` | 4 | 2 | 1 |
+| `learning_rate` | 5e-4 (<100 ex) | 2e-4 (100-1k ex) | 5e-5 (>10k ex) |
+| `num_epochs` | 10 (<100 ex) | 5 (100-1k ex) | 2 (>10k ex) |
+
+### Complete Example with All Parameters
+
+```python
+from easyfinetuner import FineTuner
+
+tuner = FineTuner(
+    model_name="unsloth/Qwen3-1.7B",
+    max_seq_length=2048,
+    load_in_4bit=True,
+    template="auto",
+)
+
+stats = tuner.train(
+    dataset="data.json",
+    output_dir="./my_model",
+    
+    # Training configuration
+    num_epochs=3,
+    batch_size=2,
+    learning_rate=2e-4,
+    
+    # LoRA configuration
+    lora_r=32,
+    
+    # Gradient handling
+    gradient_accumulation_steps=4,
+    warmup_steps=50,
+    weight_decay=0.01,
+    
+    # Checkpointing
+    save_steps=100,
+    logging_steps=10,
+    
+    # Data & validation
+    validation_split=0.1,
+    
+    # Reproducibility
+    seed=42,
+    
+    # Resume training (optional)
+    # resume_from_checkpoint="./my_model/checkpoint-500",
+)
+```
+
+---
+
 ## 📚 Additional Resources
 
 - [Main Repository](https://github.com/HariharanSuthan-A/easy-fine-tuner)
