@@ -236,8 +236,6 @@ class FineTuner:
                 "gate_proj", "up_proj", "down_proj",
             ],
             bias="none",
-            use_gradient_checkpointing="unsloth",
-            random_state=seed,
             use_rslora=False,
         )
         
