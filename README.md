@@ -394,11 +394,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 - Uses [TRL](https://github.com/huggingface/trl) for training
 - Inspired by the need for simpler LLM fine-tuning tools
 
-## 📞 Support
-
-- GitHub Issues: [github.com/yourusername/easyfinetuner/issues](https://github.com/yourusername/easyfinetuner/issues)
-- Discussions: [github.com/yourusername/easyfinetuner/discussions](https://github.com/yourusername/easyfinetuner/discussions)
-
 ---
 
-**Happy Fine-tuning! 🚀**
+**@easy-fine-tuner🚀**
