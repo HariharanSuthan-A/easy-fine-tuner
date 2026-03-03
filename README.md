@@ -1,6 +1,6 @@
-<p align="center">
+<div style="text-align: center;">
   <img src="assets/banner.png" alt="EasyFineTuner Banner" width="600">
-</p>
+</div>
 
 # EasyFinetuner 🚀
 
