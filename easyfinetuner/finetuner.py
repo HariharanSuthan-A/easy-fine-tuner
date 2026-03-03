@@ -4,6 +4,10 @@ Wraps Unsloth to provide a simple interface for LLM fine-tuning.
 """
 
 import os
+
+# Disable wandb by default to avoid import issues
+os.environ["WANDB_DISABLED"] = "true"
+
 import warnings
 from typing import Union, List, Dict, Any, Optional, Callable
 from pathlib import Path
@@ -643,3 +647,34 @@ class FineTuner:
     
     def __repr__(self):
         return f"FineTuner(model_name='{self.model_name}', template='{self.template}')"
+    
+    @staticmethod
+    def enable_wandb(project_name: str = "easyfinetuner", **kwargs):
+        """
+        Enable Weights & Biases logging.
+        Call this BEFORE creating a FineTuner instance.
+        
+        Args:
+            project_name: W&B project name
+            **kwargs: Additional W&B init arguments
+            
+        Example:
+            FineTuner.enable_wandb(project_name="my_experiments")
+            tuner = FineTuner("unsloth/Qwen3-1.7B")
+            tuner.train(dataset=data)
+        """
+        # Re-enable wandb
+        os.environ["WANDB_DISABLED"] = "false"
+        
+        try:
+            import wandb
+            wandb.init(project=project_name, **kwargs)
+            print(f"W&B enabled: https://wandb.ai/{project_name}")
+        except ImportError:
+            print("Warning: wandb not installed. Install with: pip install wandb")
+    
+    @staticmethod
+    def disable_wandb():
+        """Disable Weights & Biases logging (default behavior)."""
+        os.environ["WANDB_DISABLED"] = "true"
+        print("W&B disabled.")
