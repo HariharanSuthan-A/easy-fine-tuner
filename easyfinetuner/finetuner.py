@@ -226,8 +226,9 @@ class FineTuner:
             **self.model_kwargs
         )
         
-        # Apply LoRA
-        lora_config = LoraConfig(
+        # Apply LoRA using Unsloth's get_peft_model
+        self.model = FastLanguageModel.get_peft_model(
+            self.model,
             r=int(self.config["lora_r"]),
             lora_alpha=int(self.config["lora_alpha"]),
             lora_dropout=float(self.config["lora_dropout"]),
@@ -238,8 +239,6 @@ class FineTuner:
             bias="none",
             use_rslora=False,
         )
-        
-        self.model = FastLanguageModel.get_peft_model(self.model, lora_config)
         
         model_params = sum(p.numel() for p in self.model.parameters())
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
