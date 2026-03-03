@@ -228,9 +228,9 @@ class FineTuner:
         
         # Apply LoRA
         lora_config = LoraConfig(
-            r=self.config["lora_r"],
-            lora_alpha=self.config["lora_alpha"],
-            lora_dropout=self.config["lora_dropout"],
+            r=int(self.config["lora_r"]),
+            lora_alpha=int(self.config["lora_alpha"]),
+            lora_dropout=float(self.config["lora_dropout"]),
             target_modules=[
                 "q_proj", "k_proj", "v_proj", "o_proj",
                 "gate_proj", "up_proj", "down_proj",
