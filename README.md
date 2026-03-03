@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.png" alt="EasyFineTuner Banner" width="600">
+</p>
+
 # EasyFinetuner 🚀
 
 **Dead simple LLM fine-tuning with Unsloth**
