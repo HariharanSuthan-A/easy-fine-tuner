@@ -1,0 +1,2 @@
+[console_scripts]
+easyfinetuner = easyfinetuner.cli:main

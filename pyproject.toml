@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easyfinetuner"
+version = "0.1.0"
+description = "Dead simple LLM fine-tuning with Unsloth"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Hariharan Suthan", email = "your.email@example.com"}
+]
+keywords = ["llm", "fine-tuning", "unsloth", "lora", "peft", "transformers", "ai", "machine-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.36.0",
+    "datasets>=2.14.0",
+    "accelerate>=0.25.0",
+    "peft>=0.7.0",
+    "trl>=0.7.0",
+    "unsloth",
+    "bitsandbytes>=0.41.0",
+    "safetensors>=0.4.0",
+    "huggingface-hub>=0.19.0",
+    "tqdm>=4.65.0",
+    "pandas>=1.5.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+eval = ["sacrebleu", "rouge-score", "nltk"]
+viz = ["matplotlib", "seaborn"]
+dev = ["pytest", "pytest-cov", "black", "isort", "flake8"]
+
+[project.urls]
+Homepage = "https://github.com/HariharanSuthan-A/easy-fine-tuner"
+Documentation = "https://github.com/HariharanSuthan-A/easy-fine-tuner#readme"
+Repository = "https://github.com/HariharanSuthan-A/easy-fine-tuner"
+"Bug Tracker" = "https://github.com/HariharanSuthan-A/easy-fine-tuner/issues"
+
+[project.scripts]
+easyfinetuner = "easyfinetuner.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["easyfinetuner*"]
+exclude = ["tests*"]
