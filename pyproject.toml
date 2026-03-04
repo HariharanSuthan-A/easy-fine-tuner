@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "easyfinetuner"
-version = "0.1.0"
+version = "0.1.1"
 description = "Dead simple LLM fine-tuning with Unsloth"
 readme = "README.md"
 license = {text = "MIT"}
