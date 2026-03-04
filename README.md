@@ -38,7 +38,7 @@ pip install easyfinetuner
 
 Or install from source:
 ```bash
-git clone https://github.com/yourusername/easyfinetuner.git
+git clone https://github.com/HariharanSuthan-A/easy-fine-tuner.git
 cd easyfinetuner
 pip install -e .
 ```
@@ -393,11 +393,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 - Built on [Unsloth](https://github.com/unslothai/unsloth) for efficient fine-tuning
 - Uses [TRL](https://github.com/huggingface/trl) for training
 - Inspired by the need for simpler LLM fine-tuning tools
-
-## 📞 Support
-
-- GitHub Issues: [github.com/yourusername/easyfinetuner/issues](https://github.com/yourusername/easyfinetuner/issues)
-- Discussions: [github.com/yourusername/easyfinetuner/discussions](https://github.com/yourusername/easyfinetuner/discussions)
 
 ---
 
