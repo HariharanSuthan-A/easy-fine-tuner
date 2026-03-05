@@ -1,6 +1,6 @@
-<p align="center">
+<div style="text-align: center;">
   <img src="assets/banner.png" alt="EasyFineTuner Banner" width="600">
-</p>
+</div>
 
 # EasyFinetuner 🚀
 
@@ -34,6 +34,10 @@ tuner.export_gguf(quantization="q4_k_m")
 
 ```bash
 pip install easyfinetuner
+```
+or on colab/kaggle notebook:
+```bash
+!pip install --upgrade --force-reinstall git+https://github.com/HariharanSuthan-A/easy-fine-tuner.git
 ```
 
 Or install from source:
@@ -396,4 +400,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Happy Fine-tuning! 🚀**
+**@easy-fine-tuner🚀**
