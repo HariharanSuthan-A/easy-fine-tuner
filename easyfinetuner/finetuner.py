@@ -50,6 +50,7 @@ class FineTuner:
         load_in_4bit: bool = True,
         template: str = "auto",
         device_map: str = "auto",
+        device: str = "auto",  # NEW: auto, cuda, cpu
         **kwargs
     ):
         """
@@ -61,6 +62,7 @@ class FineTuner:
             load_in_4bit: Use 4-bit quantization to save memory
             template: Prompt template to use ("auto", "alpaca", "chatml", "plain")
             device_map: Device mapping strategy
+            device: Device to use for training ("auto", "cuda", "cpu")
             **kwargs: Additional arguments for model loading
         """
         self.model_name = model_name
@@ -69,6 +71,12 @@ class FineTuner:
         self.template = template
         self.device_map = device_map
         self.model_kwargs = kwargs
+        
+        # Auto-detect device
+        if device == "auto":
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
         
         # These will be set during train()
         self.model = None
@@ -80,12 +88,42 @@ class FineTuner:
         self.config = {}
         self.output_dir = None
         self.logger = None
+        self.bnb_config = None  # For CPU 4-bit quantization
         
         # Print device info
         print_device_info()
         
-        if not torch.cuda.is_available():
+        if self.device == "cpu":
+            print("\n🖥️  CPU Training Mode: Using 4-bit quantization + LoRA")
+            print(f"💡 Using {os.cpu_count()} CPU cores")
+            self._setup_cpu_optimizations()
+        elif not torch.cuda.is_available():
             warnings.warn("CUDA not available. Fine-tuning will be extremely slow on CPU!")
+    
+    def _setup_cpu_optimizations(self):
+        """Configure model for fast CPU training with 4-bit quantization."""
+        try:
+            from transformers import BitsAndBytesConfig
+            
+            # Configure 4-bit quantization for CPU
+            self.bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float32,  # CPU uses float32
+                bnb_4bit_use_double_quant=True,  # Double quantization for speed
+                bnb_4bit_quant_type="nf4"  # NormalFloat4 quantization
+            )
+            
+            # Enable CPU-specific optimizations
+            torch.set_num_threads(os.cpu_count())  # Use all CPU cores
+            torch.set_flush_denormal(True)  # Faster float operations
+            
+            print(f"  ✓ 4-bit quantization configured")
+            print(f"  ✓ Using {os.cpu_count()} CPU threads")
+            
+        except ImportError:
+            print("  ⚠️  bitsandbytes not installed. CPU 4-bit quantization requires:")
+            print("     pip install bitsandbytes>=0.43.0")
+            self.bnb_config = None
     
     def train(
         self,
@@ -186,14 +224,24 @@ class FineTuner:
         )
         
         # Override with user-provided values
+        # CPU-specific defaults
+        if self.device == "cpu":
+            default_lora_r = 16 if lora_r == "auto" else lora_r
+            default_batch_size = 1 if batch_size == "auto" else batch_size
+            default_grad_accum = 8 if gradient_accumulation_steps == "auto" else gradient_accumulation_steps
+        else:
+            default_lora_r = lora_r
+            default_batch_size = batch_size
+            default_grad_accum = gradient_accumulation_steps
+        
         self.config = {
             "model_name": self.model_name,
             "max_seq_length": auto_config["max_seq_length"] if self.max_seq_length_setting == "auto" else self.max_seq_length_setting,
-            "batch_size": auto_config["batch_size"] if batch_size == "auto" else batch_size,
-            "gradient_accumulation_steps": auto_config["gradient_accumulation_steps"] if gradient_accumulation_steps == "auto" else gradient_accumulation_steps,
+            "batch_size": auto_config["batch_size"] if default_batch_size == "auto" else default_batch_size,
+            "gradient_accumulation_steps": auto_config["gradient_accumulation_steps"] if default_grad_accum == "auto" else default_grad_accum,
             "num_epochs": auto_config["num_epochs"] if num_epochs == "auto" else num_epochs,
             "learning_rate": auto_config["learning_rate"] if learning_rate == "auto" else learning_rate,
-            "lora_r": auto_config["lora_r"] if lora_r == "auto" else lora_r,
+            "lora_r": auto_config["lora_r"] if default_lora_r == "auto" else default_lora_r,
             "lora_alpha": auto_config["lora_alpha"],
             "lora_dropout": 0,
             "warmup_steps": auto_config["warmup_steps"] if warmup_steps == "auto" else warmup_steps,
@@ -203,6 +251,7 @@ class FineTuner:
             "lr_scheduler_type": auto_config["lr_scheduler_type"],
             "seed": seed,
             "output_dir": output_dir,
+            "device": self.device,
             **kwargs
         }
         
@@ -217,14 +266,24 @@ class FineTuner:
         
         max_seq_length = self.config["max_seq_length"]
         
-        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=self.model_name,
-            max_seq_length=max_seq_length,
-            dtype=None,
-            load_in_4bit=self.load_in_4bit,
-            device_map=self.device_map,
+        # Load model with device-specific settings
+        model_kwargs = {
+            "model_name": self.model_name,
+            "max_seq_length": max_seq_length,
+            "dtype": None,
+            "load_in_4bit": self.load_in_4bit,
             **self.model_kwargs
-        )
+        }
+        
+        # CPU-specific model loading
+        if self.device == "cpu":
+            model_kwargs["device_map"] = "cpu"
+            if self.bnb_config is not None:
+                model_kwargs["quantization_config"] = self.bnb_config
+        else:
+            model_kwargs["device_map"] = self.device_map
+        
+        self.model, self.tokenizer = FastLanguageModel.from_pretrained(**model_kwargs)
         
         # Apply LoRA using Unsloth's get_peft_model
         self.model = FastLanguageModel.get_peft_model(
@@ -269,26 +328,51 @@ class FineTuner:
         )
         
         # Setup training arguments
-        training_args = TrainingArguments(
-            output_dir=self.output_dir,
-            num_train_epochs=self.config["num_epochs"],
-            per_device_train_batch_size=self.config["batch_size"],
-            gradient_accumulation_steps=self.config["gradient_accumulation_steps"],
-            learning_rate=self.config["learning_rate"],
-            warmup_steps=self.config["warmup_steps"],
-            weight_decay=self.config["weight_decay"],
-            logging_steps=self.config["logging_steps"],
-            save_steps=self.config["save_steps"],
-            save_total_limit=3,
-            bf16=is_bfloat16_supported(),
-            fp16=not is_bfloat16_supported(),
-            logging_dir=f"{self.output_dir}/logs",
-            lr_scheduler_type=self.config["lr_scheduler_type"],
-            seed=seed,
-            report_to="none",  # Disable wandb/tensorboard by default
-            remove_unused_columns=False,
-            **kwargs
-        )
+        # CPU-specific: disable fp16/bf16, use CPU-optimized settings
+        if self.device == "cpu":
+            training_args = TrainingArguments(
+                output_dir=self.output_dir,
+                num_train_epochs=self.config["num_epochs"],
+                per_device_train_batch_size=self.config["batch_size"],
+                gradient_accumulation_steps=self.config["gradient_accumulation_steps"],
+                learning_rate=self.config["learning_rate"],
+                warmup_steps=self.config["warmup_steps"],
+                weight_decay=self.config["weight_decay"],
+                logging_steps=self.config["logging_steps"],
+                save_steps=self.config["save_steps"],
+                save_total_limit=3,
+                bf16=False,  # CPU doesn't support bf16
+                fp16=False,  # CPU doesn't support fp16
+                logging_dir=f"{self.output_dir}/logs",
+                lr_scheduler_type=self.config["lr_scheduler_type"],
+                seed=seed,
+                report_to="none",  # Disable wandb/tensorboard by default
+                remove_unused_columns=False,
+                dataloader_num_workers=min(4, os.cpu_count() // 2),  # Parallel data loading
+                dataloader_pin_memory=False,  # No GPU pinning for CPU
+                **kwargs
+            )
+        else:
+            training_args = TrainingArguments(
+                output_dir=self.output_dir,
+                num_train_epochs=self.config["num_epochs"],
+                per_device_train_batch_size=self.config["batch_size"],
+                gradient_accumulation_steps=self.config["gradient_accumulation_steps"],
+                learning_rate=self.config["learning_rate"],
+                warmup_steps=self.config["warmup_steps"],
+                weight_decay=self.config["weight_decay"],
+                logging_steps=self.config["logging_steps"],
+                save_steps=self.config["save_steps"],
+                save_total_limit=3,
+                bf16=is_bfloat16_supported(),
+                fp16=not is_bfloat16_supported(),
+                logging_dir=f"{self.output_dir}/logs",
+                lr_scheduler_type=self.config["lr_scheduler_type"],
+                seed=seed,
+                report_to="none",  # Disable wandb/tensorboard by default
+                remove_unused_columns=False,
+                **kwargs
+            )
         
         # Setup validation dataset if available
         eval_dataset = None

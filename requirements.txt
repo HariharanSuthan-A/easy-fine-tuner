@@ -5,7 +5,7 @@ transformers>=4.36.0
 trl>=0.7.0
 peft>=0.7.0
 accelerate>=0.25.0
-bitsandbytes>=0.41.0
+bitsandbytes>=0.43.0  # CPU 4-bit quantization support
 
 # Data handling
 datasets>=2.14.0
